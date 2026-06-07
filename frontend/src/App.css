@@ -455,6 +455,89 @@ button {
   font-weight: bold;
 }
 
+.material.locked {
+  opacity: 0.65;
+  background: #f1f5f9;
+  border: 1px dashed #94a3b8;
+}
+
+.material small {
+  display: block;
+  margin-top: 8px;
+  color: #dc2626;
+  font-weight: bold;
+}
+
+.material-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.resource-link {
+  background: #1d4ed8;
+  color: white;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.resource-link:hover {
+  background: #0f172a;
+}
+
+.complete {
+  background: #e0f2fe;
+  color: #1d4ed8;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.complete.done {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.mode-card {
+  margin-bottom: 28px;
+  padding: 24px;
+  border-radius: 18px;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.09);
+}
+
+.mode-card h3 {
+  margin-bottom: 10px;
+}
+
+.mode-card p {
+  line-height: 1.6;
+}
+
+.demo-mode {
+  background: #fff7ed;
+  border-left: 6px solid #f97316;
+}
+
+.demo-mode h3 {
+  color: #c2410c;
+}
+
+.paid-mode {
+  background: #ecfdf5;
+  border-left: 6px solid #16a34a;
+}
+
+.paid-mode h3 {
+  color: #15803d;
+}
+
 .mates {
   background: white;
   border-radius: 14px;
@@ -469,6 +552,58 @@ button {
 
 .mates p:last-child {
   border-bottom: none;
+}
+
+.mini-foro {
+  margin-top: 22px;
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.mini-foro h3 {
+  color: #1d4ed8;
+  margin-bottom: 12px;
+}
+
+.mini-foro p {
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+  line-height: 1.5;
+}
+
+.mini-foro p:last-child {
+  border-bottom: none;
+}
+
+.upgrade-box {
+  margin-top: 35px;
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  color: white;
+  padding: 30px;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.upgrade-box h3 {
+  margin-bottom: 12px;
+}
+
+.upgrade-box p {
+  max-width: 750px;
+  margin: 0 auto 20px;
+  line-height: 1.6;
+}
+
+.upgrade-box button {
+  background: #38bdf8;
+  color: #0f172a;
+  border: none;
+  padding: 13px 20px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 .kpis div {

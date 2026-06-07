@@ -14,6 +14,8 @@ function App() {
   const [cursoSeleccionado, setCursoSeleccionado] = useState(null);
   const [usuarioActivo, setUsuarioActivo] = useState(null);
   const [materiales, setMateriales] = useState([]);
+  const [materialesCompletados, setMaterialesCompletados] = useState([]);
+
   const [mensaje, setMensaje] = useState("");
   const [codigoLogin, setCodigoLogin] = useState("");
 
@@ -48,6 +50,8 @@ function App() {
         setCursos(datos.cursos);
         setArticulos(datos.articulos);
         setMetricas(datos.metricas);
+      } else {
+        setMensaje(datos.message);
       }
     } catch (error) {
       setMensaje("No se pudo conectar con el backend de cursos.");
@@ -62,6 +66,8 @@ function App() {
       if (datos.success) {
         setUsuarios(datos.usuarios);
         setResumen(datos.resumen);
+      } else {
+        setMensaje(datos.message);
       }
     } catch (error) {
       setMensaje("No se pudo cargar el panel administrativo.");
@@ -79,10 +85,12 @@ function App() {
 
   const seleccionarCurso = (curso) => {
     setCursoSeleccionado(curso);
+
     setFormulario({
       ...formulario,
       curso: curso.nombre,
     });
+
     setVista("detalle");
     setMensaje("");
   };
@@ -93,6 +101,7 @@ function App() {
         ...formulario,
         curso: curso.nombre,
       });
+
       setCursoSeleccionado(curso);
     }
 
@@ -185,6 +194,7 @@ function App() {
       if (datos.success) {
         setUsuarioActivo(datos.usuario);
         setMateriales(datos.materiales);
+        setMaterialesCompletados([]);
         setCodigoLogin("");
         setVista("aula");
         setMensaje("");
@@ -219,12 +229,57 @@ function App() {
   const cerrarSesion = () => {
     setUsuarioActivo(null);
     setMateriales([]);
+    setMaterialesCompletados([]);
     setVista("inicio");
   };
 
   const cursoDelUsuario = cursos.find(
     (curso) => curso.nombre === usuarioActivo?.curso,
   );
+
+  const estaBloqueado = (material) => {
+    return (
+      usuarioActivo?.tipo_registro === "gratis" && material.acceso === "pago"
+    );
+  };
+
+  const cambiarCompletado = (idMaterial) => {
+    if (materialesCompletados.includes(idMaterial)) {
+      setMaterialesCompletados(
+        materialesCompletados.filter((id) => id !== idMaterial),
+      );
+    } else {
+      setMaterialesCompletados([...materialesCompletados, idMaterial]);
+    }
+  };
+
+  const calcularProgresoAula = () => {
+    if (!usuarioActivo || materiales.length === 0) {
+      return 0;
+    }
+
+    const materialesDisponibles = materiales.filter(
+      (material) => !estaBloqueado(material),
+    );
+
+    if (materialesDisponibles.length === 0) {
+      return 0;
+    }
+
+    const completadosDisponibles = materialesCompletados.filter((id) =>
+      materialesDisponibles.some((material) => material.id_material === id),
+    );
+
+    const porcentaje = Math.round(
+      (completadosDisponibles.length / materialesDisponibles.length) * 100,
+    );
+
+    if (usuarioActivo.tipo_registro === "gratis") {
+      return Math.min(porcentaje, 20);
+    }
+
+    return porcentaje;
+  };
 
   return (
     <div className="app">
@@ -265,7 +320,9 @@ function App() {
           <section className="hero">
             <div className="hero-text">
               <span className="tag">Campaña activa: primera clase gratis</span>
+
               <h2>Aprendé programación y desarrollá tu futuro profesional</h2>
+
               <p>
                 Plataforma educativa dinámica con cursos, certificaciones, aula
                 virtual, códigos de acceso, seguimiento de alumnos y medición de
@@ -279,6 +336,7 @@ function App() {
                 >
                   Ver cursos
                 </button>
+
                 <button
                   onClick={() => cambiarVista("registro")}
                   className="btn secondary"
@@ -300,6 +358,7 @@ function App() {
 
           <section className="section">
             <h2>Embudo de conversión</h2>
+
             <p className="subtitle">
               La web acompaña al usuario desde que descubre la campaña hasta que
               se matricula y accede al aula virtual.
@@ -376,6 +435,7 @@ function App() {
       {vista === "cursos" && (
         <section className="section">
           <h2>Catálogo de cursos</h2>
+
           <p className="subtitle">
             Cursos pensados para atraer tráfico cualificado y convertir
             visitantes en alumnos.
@@ -385,7 +445,9 @@ function App() {
             {cursos.map((curso) => (
               <article key={curso.id_curso} className="card">
                 <span className="promo">{curso.promo}</span>
+
                 <h3>{curso.nombre}</h3>
+
                 <p>{curso.descripcion}</p>
 
                 <ul>
@@ -411,7 +473,9 @@ function App() {
         <section className="section">
           <div className="detail">
             <span className="promo">{cursoSeleccionado.promo}</span>
+
             <h2>{cursoSeleccionado.nombre}</h2>
+
             <p>{cursoSeleccionado.descripcion}</p>
 
             <div className="detail-grid">
@@ -468,6 +532,7 @@ function App() {
       {vista === "blog" && (
         <section className="section">
           <h2>Blog SEO</h2>
+
           <p className="subtitle">
             Artículos técnicos pensados para captar usuarios desde Google y
             dirigirlos hacia los cursos relacionados.
@@ -477,8 +542,11 @@ function App() {
             {articulos.map((articulo) => (
               <article key={articulo.id_articulo} className="card">
                 <span className="promo">Keyword: {articulo.palabra_clave}</span>
+
                 <h3>{articulo.titulo}</h3>
+
                 <p>{articulo.resumen}</p>
+
                 <strong>Curso relacionado: {articulo.curso_relacionado}</strong>
 
                 <button
@@ -503,6 +571,7 @@ function App() {
       {vista === "journey" && (
         <section className="section">
           <h2>Customer Journey Maps</h2>
+
           <p className="subtitle">
             La web contempla recorridos desde redes sociales y desde búsqueda
             orgánica/pagada.
@@ -542,6 +611,7 @@ function App() {
       {vista === "registro" && (
         <section className="section">
           <h2>Registro de alumno</h2>
+
           <p className="subtitle">
             El formulario permite captar leads. Puede generar un código DEMO
             gratuito o un código PAGO pendiente de confirmación.
@@ -578,6 +648,7 @@ function App() {
               onChange={manejarCambio}
             >
               <option value="">Seleccioná un curso</option>
+
               {cursos.map((curso) => (
                 <option key={curso.id_curso} value={curso.nombre}>
                   {curso.nombre}
@@ -630,6 +701,7 @@ function App() {
       {vista === "login" && (
         <section className="section">
           <h2>Ingreso al aula virtual</h2>
+
           <p className="subtitle">
             Ingresá el código recibido. Los códigos pendientes de pago no
             permiten entrar hasta que el administrador confirme la matrícula.
@@ -665,21 +737,53 @@ function App() {
             </button>
           </div>
 
+          <div
+            className={
+              usuarioActivo.tipo_registro === "gratis"
+                ? "mode-card demo-mode"
+                : "mode-card paid-mode"
+            }
+          >
+            {usuarioActivo.tipo_registro === "gratis" ? (
+              <>
+                <h3>Acceso DEMO introductorio</h3>
+                <p>
+                  Estás dentro de una versión gratuita. Podés ver la unidad
+                  introductoria, conocer el aula y revisar algunos recursos
+                  iniciales. Para desbloquear el curso completo, materiales,
+                  actividades y proyecto final, debés completar la inscripción
+                  paga.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3>Acceso completo habilitado</h3>
+                <p>
+                  Tu inscripción está confirmada. Tenés acceso a todas las
+                  unidades, enlaces oficiales, actividades prácticas y
+                  seguimiento de avance.
+                </p>
+              </>
+            )}
+          </div>
+
           <div className="dashboard">
             <div className="panel large">
               <h3>{usuarioActivo.curso}</h3>
+
               <p>
                 Profesor: <strong>{cursoDelUsuario?.profesor}</strong>
               </p>
+
               <p>
                 Modalidad: <strong>{cursoDelUsuario?.modalidad}</strong>
               </p>
 
               <div className="bar">
-                <div style={{ width: `${usuarioActivo.progreso}%` }}></div>
+                <div style={{ width: `${calcularProgresoAula()}%` }}></div>
               </div>
 
-              <span>{usuarioActivo.progreso}% de avance</span>
+              <span>{calcularProgresoAula()}% de avance</span>
             </div>
 
             <div className="panel">
@@ -690,24 +794,78 @@ function App() {
 
             <div className="panel">
               <h3>Certificado</h3>
-              <p>Disponible al completar el 100% del curso.</p>
+
+              {usuarioActivo.tipo_registro === "gratis" ? (
+                <p>
+                  El certificado está bloqueado. Se habilita al completar la
+                  inscripción paga y finalizar el curso.
+                </p>
+              ) : (
+                <p>
+                  El certificado estará disponible cuando completes el 100% del
+                  curso.
+                </p>
+              )}
             </div>
           </div>
 
           <div className="aula-content">
             <div>
-              <h3>Material de estudio</h3>
+              <h3>Unidades y materiales de estudio</h3>
 
-              {materiales.map((material) => (
-                <div className="material" key={material.id_material}>
-                  <div>
-                    <strong>{material.modulo}</strong>
-                    <p>{material.titulo}</p>
+              {materiales.map((material) => {
+                const bloqueado = estaBloqueado(material);
+                const completado = materialesCompletados.includes(
+                  material.id_material,
+                );
+
+                return (
+                  <div
+                    className={bloqueado ? "material locked" : "material"}
+                    key={material.id_material}
+                  >
+                    <div>
+                      <strong>{material.modulo}</strong>
+                      <p>{material.titulo}</p>
+
+                      {bloqueado && (
+                        <small>
+                          Material bloqueado. Disponible al confirmar la
+                          inscripción paga.
+                        </small>
+                      )}
+                    </div>
+
+                    <span>{material.tipo}</span>
+
+                    <div className="material-actions">
+                      {!bloqueado && material.enlace && (
+                        <a
+                          href={material.enlace}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="resource-link"
+                        >
+                          Abrir recurso
+                        </a>
+                      )}
+
+                      {!bloqueado && (
+                        <button
+                          className={completado ? "complete done" : "complete"}
+                          onClick={() =>
+                            cambiarCompletado(material.id_material)
+                          }
+                        >
+                          {completado ? "Completado" : "Marcar"}
+                        </button>
+                      )}
+
+                      {bloqueado && <em>Bloqueado</em>}
+                    </div>
                   </div>
-                  <span>{material.tipo}</span>
-                  <em>{material.estado}</em>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div>
@@ -718,14 +876,59 @@ function App() {
                   <p key={index}>{compa}</p>
                 ))}
               </div>
+
+              <div className="mini-foro">
+                <h3>Foro de consultas</h3>
+
+                {usuarioActivo.tipo_registro === "gratis" ? (
+                  <p>
+                    El foro completo está bloqueado para usuarios DEMO. Al
+                    confirmar el pago, se habilitan consultas con docentes y
+                    compañeros.
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      <strong>Carolina:</strong> Recuerden revisar la
+                      documentación oficial antes de resolver la actividad.
+                    </p>
+
+                    <p>
+                      <strong>Facundo:</strong> ¿El proyecto final se entrega en
+                      GitHub?
+                    </p>
+
+                    <p>
+                      <strong>Profesor:</strong> Sí, se entrega con repositorio
+                      y README.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
+
+          {usuarioActivo.tipo_registro === "gratis" && (
+            <div className="upgrade-box">
+              <h3>Desbloquear curso completo</h3>
+
+              <p>
+                Para acceder a todas las unidades, actividades prácticas, foro,
+                proyecto final y certificado, completá la inscripción paga.
+              </p>
+
+              <button onClick={() => cambiarVista("admin")}>
+                Simular confirmación de pago desde Admin
+              </button>
+            </div>
+          )}
         </section>
       )}
 
       {vista === "admin" && (
         <section className="section">
           <h2>Panel administrativo y analítica</h2>
+
           <p className="subtitle">
             Simula el control de inscripciones, pagos, códigos y métricas de
             campaña.
