@@ -1,86 +1,19 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
+const API = "http://localhost/TPI-BIGDATA/backend/api";
+
 function App() {
-  const cursos = [
-    {
-      id: 1,
-      nombre: "HTML, CSS y JavaScript",
-      descripcion: "Aprendé a crear páginas web modernas desde cero.",
-      duracion: "8 semanas",
-      modalidad: "Online",
-      precio: "$25.000",
-      profesor: "Lucía Fernández",
-      promo: "Primera clase gratis",
-      nivel: "Inicial",
-    },
-    {
-      id: 2,
-      nombre: "React y Node.js",
-      descripcion: "Creá aplicaciones web dinámicas con tecnologías actuales.",
-      duracion: "12 semanas",
-      modalidad: "Online",
-      precio: "$40.000",
-      profesor: "Martín Gómez",
-      promo: "25% OFF",
-      nivel: "Intermedio",
-    },
-    {
-      id: 3,
-      nombre: "Base de Datos SQL",
-      descripcion: "Aprendé consultas, tablas, relaciones y gestión de datos.",
-      duracion: "6 semanas",
-      modalidad: "Online",
-      precio: "$30.000",
-      profesor: "Carolina Ríos",
-      promo: "Certificación incluida",
-      nivel: "Inicial",
-    },
-  ];
-
-  const materiales = [
-    {
-      id: 1,
-      modulo: "Módulo 1",
-      titulo: "Introducción al curso",
-      tipo: "Video clase",
-      estado: "Disponible",
-    },
-    {
-      id: 2,
-      modulo: "Módulo 2",
-      titulo: "Material de lectura",
-      tipo: "PDF",
-      estado: "Disponible",
-    },
-    {
-      id: 3,
-      modulo: "Módulo 3",
-      titulo: "Actividad práctica",
-      tipo: "Trabajo práctico",
-      estado: "Pendiente",
-    },
-    {
-      id: 4,
-      modulo: "Módulo 4",
-      titulo: "Evaluación final",
-      tipo: "Cuestionario",
-      estado: "Bloqueado",
-    },
-  ];
-
-  const compañeros = [
-    "Tomas Vega",
-    "Franco Benitez",
-    "Facundo Cristaldo",
-    "Sofía Martínez",
-    "Nicolás Acosta",
-  ];
-
+  const [vista, setVista] = useState("inicio");
+  const [cursos, setCursos] = useState([]);
+  const [articulos, setArticulos] = useState([]);
+  const [metricas, setMetricas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
+  const [resumen, setResumen] = useState(null);
+
   const [cursoSeleccionado, setCursoSeleccionado] = useState(null);
   const [usuarioActivo, setUsuarioActivo] = useState(null);
-  const [vista, setVista] = useState("inicio");
+  const [materiales, setMateriales] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [codigoLogin, setCodigoLogin] = useState("");
 
@@ -90,34 +23,58 @@ function App() {
     telefono: "",
     curso: "",
     tipoRegistro: "gratis",
+    fuenteTrafico: "Instagram Ads",
   });
 
-  useEffect(() => {
-    const usuariosGuardados = localStorage.getItem("usuariosTechAcademy");
+  const companeros = [
+    "Tomas Vega",
+    "Franco Benitez",
+    "Facundo Cristaldo",
+    "Sofía Martínez",
+    "Nicolás Acosta",
+  ];
 
-    if (usuariosGuardados) {
-      setUsuarios(JSON.parse(usuariosGuardados));
-    }
+  useEffect(() => {
+    cargarDatosPublicos();
+    cargarUsuarios();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("usuariosTechAcademy", JSON.stringify(usuarios));
-  }, [usuarios]);
+  const cargarDatosPublicos = async () => {
+    try {
+      const respuesta = await fetch(`${API}/cursos.php`);
+      const datos = await respuesta.json();
 
-  const generarCodigo = (curso, tipoRegistro) => {
-    const cursoCorto = curso
-      .toUpperCase()
-      .replaceAll(" ", "")
-      .replaceAll(",", "")
-      .slice(0, 8);
-
-    const numero = Math.floor(1000 + Math.random() * 9000);
-
-    if (tipoRegistro === "gratis") {
-      return `DEMO-${cursoCorto}-${numero}`;
+      if (datos.success) {
+        setCursos(datos.cursos);
+        setArticulos(datos.articulos);
+        setMetricas(datos.metricas);
+      }
+    } catch (error) {
+      setMensaje("No se pudo conectar con el backend de cursos.");
     }
+  };
 
-    return `PAGO-${cursoCorto}-${numero}`;
+  const cargarUsuarios = async () => {
+    try {
+      const respuesta = await fetch(`${API}/usuarios.php`);
+      const datos = await respuesta.json();
+
+      if (datos.success) {
+        setUsuarios(datos.usuarios);
+        setResumen(datos.resumen);
+      }
+    } catch (error) {
+      setMensaje("No se pudo cargar el panel administrativo.");
+    }
+  };
+
+  const cambiarVista = (nuevaVista) => {
+    setVista(nuevaVista);
+    setMensaje("");
+
+    if (nuevaVista === "admin") {
+      cargarUsuarios();
+    }
   };
 
   const seleccionarCurso = (curso) => {
@@ -126,6 +83,19 @@ function App() {
       ...formulario,
       curso: curso.nombre,
     });
+    setVista("detalle");
+    setMensaje("");
+  };
+
+  const irARegistro = (curso = null) => {
+    if (curso) {
+      setFormulario({
+        ...formulario,
+        curso: curso.nombre,
+      });
+      setCursoSeleccionado(curso);
+    }
+
     setVista("registro");
     setMensaje("");
   };
@@ -137,7 +107,7 @@ function App() {
     });
   };
 
-  const enviarRegistro = (e) => {
+  const enviarRegistro = async (e) => {
     e.preventDefault();
 
     if (
@@ -146,100 +116,110 @@ function App() {
       formulario.telefono.trim() === "" ||
       formulario.curso.trim() === ""
     ) {
-      setMensaje("Por favor, completá todos los campos.");
+      setMensaje("Completá todos los campos para generar el registro.");
       return;
     }
 
-    const codigoGenerado = generarCodigo(
-      formulario.curso,
-      formulario.tipoRegistro,
-    );
+    try {
+      const respuesta = await fetch(`${API}/registrar.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formulario),
+      });
 
-    const nuevoUsuario = {
-      id: Date.now(),
-      nombre: formulario.nombre,
-      email: formulario.email,
-      telefono: formulario.telefono,
-      curso: formulario.curso,
-      tipoRegistro: formulario.tipoRegistro,
-      codigo: codigoGenerado,
-      estado:
-        formulario.tipoRegistro === "gratis"
-          ? "Acceso habilitado"
-          : "Pendiente de pago",
-      fechaRegistro: new Date().toLocaleDateString(),
-      progreso: formulario.tipoRegistro === "gratis" ? 20 : 0,
-    };
+      const datos = await respuesta.json();
 
-    setUsuarios([...usuarios, nuevoUsuario]);
+      if (datos.success) {
+        if (datos.estado === "Acceso habilitado") {
+          setMensaje(
+            `Registro exitoso. Tu código de acceso gratuito es: ${datos.codigo}`,
+          );
+        } else {
+          setMensaje(
+            `Registro generado. Tu código es ${datos.codigo}, pero queda pendiente hasta confirmar el pago.`,
+          );
+        }
 
-    if (formulario.tipoRegistro === "gratis") {
-      setMensaje(
-        `Registro exitoso. Tu código de acceso gratuito es: ${codigoGenerado}`,
-      );
-    } else {
-      setMensaje(
-        `Registro enviado. Tu código fue generado, pero quedará pendiente hasta confirmar el pago: ${codigoGenerado}`,
-      );
+        setFormulario({
+          nombre: "",
+          email: "",
+          telefono: "",
+          curso: "",
+          tipoRegistro: "gratis",
+          fuenteTrafico: "Instagram Ads",
+        });
+
+        setCursoSeleccionado(null);
+        cargarUsuarios();
+      } else {
+        setMensaje(datos.message);
+      }
+    } catch (error) {
+      setMensaje("Error al registrar. Revisá si Apache y MySQL están activos.");
     }
-
-    setFormulario({
-      nombre: "",
-      email: "",
-      telefono: "",
-      curso: "",
-      tipoRegistro: "gratis",
-    });
-
-    setCursoSeleccionado(null);
   };
 
-  const ingresarConCodigo = (e) => {
+  const ingresarConCodigo = async (e) => {
     e.preventDefault();
 
-    const usuarioEncontrado = usuarios.find(
-      (usuario) => usuario.codigo.toLowerCase() === codigoLogin.toLowerCase(),
-    );
-
-    if (!usuarioEncontrado) {
-      setMensaje("El código ingresado no existe.");
+    if (codigoLogin.trim() === "") {
+      setMensaje("Ingresá un código de acceso.");
       return;
     }
 
-    if (usuarioEncontrado.estado === "Pendiente de pago") {
-      setMensaje(
-        "Tu inscripción existe, pero el acceso todavía está pendiente de pago.",
-      );
-      return;
-    }
+    try {
+      const respuesta = await fetch(`${API}/login_codigo.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          codigo: codigoLogin,
+        }),
+      });
 
-    setUsuarioActivo(usuarioEncontrado);
-    setVista("aula");
-    setMensaje("");
-    setCodigoLogin("");
+      const datos = await respuesta.json();
+
+      if (datos.success) {
+        setUsuarioActivo(datos.usuario);
+        setMateriales(datos.materiales);
+        setCodigoLogin("");
+        setVista("aula");
+        setMensaje("");
+      } else {
+        setMensaje(datos.message);
+      }
+    } catch (error) {
+      setMensaje("No se pudo ingresar. Revisá el backend.");
+    }
   };
 
-  const confirmarPago = (idUsuario) => {
-    const usuariosActualizados = usuarios.map((usuario) => {
-      if (usuario.id === idUsuario) {
-        return {
-          ...usuario,
-          estado: "Acceso habilitado",
-          progreso: 10,
-        };
-      }
+  const confirmarPago = async (idUsuario) => {
+    try {
+      const respuesta = await fetch(`${API}/confirmar_pago.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_usuario: idUsuario,
+        }),
+      });
 
-      return usuario;
-    });
-
-    setUsuarios(usuariosActualizados);
-    setMensaje("Pago confirmado. El código de acceso quedó habilitado.");
+      const datos = await respuesta.json();
+      setMensaje(datos.message);
+      cargarUsuarios();
+    } catch (error) {
+      setMensaje("No se pudo confirmar el pago.");
+    }
   };
 
   const cerrarSesion = () => {
     setUsuarioActivo(null);
+    setMateriales([]);
     setVista("inicio");
-    setMensaje("");
   };
 
   const cursoDelUsuario = cursos.find(
@@ -247,26 +227,34 @@ function App() {
   );
 
   return (
-    <div>
+    <div className="app">
       <header className="header">
         <nav className="navbar">
           <h1>Tech Academy</h1>
 
           <ul>
             <li>
-              <button onClick={() => setVista("inicio")}>Inicio</button>
+              <button onClick={() => cambiarVista("inicio")}>Inicio</button>
             </li>
             <li>
-              <button onClick={() => setVista("cursos")}>Cursos</button>
+              <button onClick={() => cambiarVista("cursos")}>Cursos</button>
             </li>
             <li>
-              <button onClick={() => setVista("registro")}>Registro</button>
+              <button onClick={() => cambiarVista("blog")}>Blog SEO</button>
             </li>
             <li>
-              <button onClick={() => setVista("login")}>Ingresar</button>
+              <button onClick={() => cambiarVista("journey")}>
+                Customer Journey
+              </button>
             </li>
             <li>
-              <button onClick={() => setVista("admin")}>Admin</button>
+              <button onClick={() => cambiarVista("registro")}>Registro</button>
+            </li>
+            <li>
+              <button onClick={() => cambiarVista("login")}>Ingresar</button>
+            </li>
+            <li>
+              <button onClick={() => cambiarVista("admin")}>Admin</button>
             </li>
           </ul>
         </nav>
@@ -276,133 +264,142 @@ function App() {
         <>
           <section className="hero">
             <div className="hero-text">
-              <span className="etiqueta">Plataforma educativa dinámica</span>
-
-              <h2>Aprendé programación y desarrollo web desde cero</h2>
-
+              <span className="tag">Campaña activa: primera clase gratis</span>
+              <h2>Aprendé programación y desarrollá tu futuro profesional</h2>
               <p>
-                Registrate, recibí un código de acceso y entrá a tu aula virtual
-                con materiales de estudio, profesores, compañeros y seguimiento
-                de avance.
+                Plataforma educativa dinámica con cursos, certificaciones, aula
+                virtual, códigos de acceso, seguimiento de alumnos y medición de
+                campañas.
               </p>
 
-              <div className="botones">
+              <div className="hero-actions">
                 <button
-                  className="btn principal"
-                  onClick={() => setVista("cursos")}
+                  onClick={() => cambiarVista("cursos")}
+                  className="btn primary"
                 >
                   Ver cursos
                 </button>
-
                 <button
-                  className="btn secundario"
-                  onClick={() => setVista("login")}
+                  onClick={() => cambiarVista("registro")}
+                  className="btn secondary"
                 >
-                  Ingresar con código
+                  Registrarme
                 </button>
               </div>
             </div>
 
-            <div className="publicidad">
-              <h3>Campaña activa</h3>
-              <p>Primera clase gratis</p>
-              <strong>{usuarios.length} usuarios registrados</strong>
-              <span>SEO + anuncios + aula virtual</span>
+            <div className="ad-card">
+              <h3>Desarrollo Web Full Stack</h3>
+              <p>25% OFF + certificación digital</p>
+              <strong>
+                {resumen?.total_usuarios || 0} usuarios registrados
+              </strong>
+              <span>SEO + Ads + Email Marketing + PostHog</span>
             </div>
           </section>
 
-          <section className="seccion resumen">
-            <h2>¿Cómo funciona?</h2>
+          <section className="section">
+            <h2>Embudo de conversión</h2>
+            <p className="subtitle">
+              La web acompaña al usuario desde que descubre la campaña hasta que
+              se matricula y accede al aula virtual.
+            </p>
 
-            <div className="pasos">
+            <div className="steps">
               <div>
                 <span>1</span>
-                <h3>Elegís un curso</h3>
+                <h3>Descubrimiento</h3>
                 <p>
-                  El usuario llega desde Google, redes sociales o publicidad y
-                  selecciona una capacitación.
+                  El usuario llega desde Instagram Ads, Google Search o
+                  contenido SEO.
                 </p>
               </div>
 
               <div>
                 <span>2</span>
-                <h3>Te registrás</h3>
+                <h3>Consideración</h3>
                 <p>
-                  Puede elegir acceso gratuito con código automático o registro
-                  pendiente de pago.
+                  Consulta cursos, temarios, docentes, precios, cupos y
+                  beneficios.
                 </p>
               </div>
 
               <div>
                 <span>3</span>
-                <h3>Ingresás al aula</h3>
+                <h3>Conversión</h3>
                 <p>
-                  Con el código habilitado accede al curso, materiales,
-                  profesores y compañeros.
+                  Completa el formulario, recibe un código y queda registrado en
+                  la base.
+                </p>
+              </div>
+
+              <div>
+                <span>4</span>
+                <h3>Retención</h3>
+                <p>
+                  Ingresa al aula, consulta materiales y avanza hacia el
+                  certificado.
                 </p>
               </div>
             </div>
           </section>
 
-          <section className="seccion seo">
-            <h2>Aplicación del SEO</h2>
+          <section className="section blue">
+            <h2>Elementos publicitarios</h2>
 
-            <div className="seo-grid">
-              <div>
-                <h3>Posicionamiento</h3>
+            <div className="cards">
+              <article className="card center">
+                <h3>Primera clase gratis</h3>
                 <p>
-                  La página utiliza títulos claros, contenido relacionado con
-                  cursos de programación y estructura ordenada.
+                  Registro automático con código DEMO para captar potenciales
+                  alumnos.
                 </p>
-              </div>
+              </article>
 
-              <div>
-                <h3>Conversión</h3>
-                <p>
-                  El SEO atrae visitantes interesados y los dirige hacia el
-                  registro o inscripción.
-                </p>
-              </div>
+              <article className="card center">
+                <h3>25% OFF</h3>
+                <p>Promoción orientada a aumentar la matriculación efectiva.</p>
+              </article>
 
-              <div>
-                <h3>Medición</h3>
+              <article className="card center">
+                <h3>Certificación digital</h3>
                 <p>
-                  Se pueden medir visitas, clics, registros, códigos generados y
-                  accesos al aula virtual.
+                  Beneficio final para favorecer recomendación y difusión en
+                  redes.
                 </p>
-              </div>
+              </article>
             </div>
           </section>
         </>
       )}
 
       {vista === "cursos" && (
-        <section className="seccion">
-          <h2>Cursos disponibles</h2>
-          <p className="subtitulo">
-            Seleccioná una capacitación para iniciar el proceso de registro.
+        <section className="section">
+          <h2>Catálogo de cursos</h2>
+          <p className="subtitle">
+            Cursos pensados para atraer tráfico cualificado y convertir
+            visitantes en alumnos.
           </p>
 
-          <div className="contenedor-cursos">
+          <div className="cards">
             {cursos.map((curso) => (
-              <article key={curso.id} className="card">
+              <article key={curso.id_curso} className="card">
                 <span className="promo">{curso.promo}</span>
-
                 <h3>{curso.nombre}</h3>
-
                 <p>{curso.descripcion}</p>
 
-                <ul className="lista-card">
+                <ul>
                   <li>Duración: {curso.duracion}</li>
                   <li>Modalidad: {curso.modalidad}</li>
                   <li>Nivel: {curso.nivel}</li>
                   <li>Profesor: {curso.profesor}</li>
+                  <li>Cupos disponibles: {curso.cupos}</li>
                 </ul>
 
-                <h4>{curso.precio}</h4>
+                <h4>${Number(curso.precio).toLocaleString("es-AR")}</h4>
 
                 <button onClick={() => seleccionarCurso(curso)}>
-                  Inscribirme
+                  Ver detalle
                 </button>
               </article>
             ))}
@@ -410,25 +407,147 @@ function App() {
         </section>
       )}
 
-      {vista === "registro" && (
-        <section className="seccion">
-          <h2>Registro de alumno</h2>
+      {vista === "detalle" && cursoSeleccionado && (
+        <section className="section">
+          <div className="detail">
+            <span className="promo">{cursoSeleccionado.promo}</span>
+            <h2>{cursoSeleccionado.nombre}</h2>
+            <p>{cursoSeleccionado.descripcion}</p>
 
-          <p className="subtitulo">
-            Elegí si querés acceder a una clase gratuita o dejar tu inscripción
-            pendiente hasta confirmar el pago.
+            <div className="detail-grid">
+              <div>
+                <h3>Información del curso</h3>
+                <p>
+                  <strong>Duración:</strong> {cursoSeleccionado.duracion}
+                </p>
+                <p>
+                  <strong>Modalidad:</strong> {cursoSeleccionado.modalidad}
+                </p>
+                <p>
+                  <strong>Nivel:</strong> {cursoSeleccionado.nivel}
+                </p>
+                <p>
+                  <strong>Cupos:</strong> {cursoSeleccionado.cupos}
+                </p>
+                <p>
+                  <strong>Precio:</strong> $
+                  {Number(cursoSeleccionado.precio).toLocaleString("es-AR")}
+                </p>
+              </div>
+
+              <div>
+                <h3>Docente asignado</h3>
+                <p>
+                  <strong>{cursoSeleccionado.profesor}</strong>
+                </p>
+                <p>{cursoSeleccionado.especialidad}</p>
+                <p>{cursoSeleccionado.email_profesor}</p>
+                <p>{cursoSeleccionado.horario_consulta}</p>
+              </div>
+
+              <div>
+                <h3>Objetivo de campaña</h3>
+                <p>
+                  Este curso forma parte de la estrategia de conversión para
+                  aumentar la matriculación y reducir el costo de adquisición de
+                  alumnos.
+                </p>
+              </div>
+            </div>
+
+            <button
+              className="btn primary"
+              onClick={() => irARegistro(cursoSeleccionado)}
+            >
+              Inscribirme ahora
+            </button>
+          </div>
+        </section>
+      )}
+
+      {vista === "blog" && (
+        <section className="section">
+          <h2>Blog SEO</h2>
+          <p className="subtitle">
+            Artículos técnicos pensados para captar usuarios desde Google y
+            dirigirlos hacia los cursos relacionados.
           </p>
 
-          {cursoSeleccionado && (
-            <div className="detalle">
-              <h3>Curso seleccionado</h3>
-              <p>
-                {cursoSeleccionado.nombre} - {cursoSeleccionado.precio}
-              </p>
-            </div>
-          )}
+          <div className="cards">
+            {articulos.map((articulo) => (
+              <article key={articulo.id_articulo} className="card">
+                <span className="promo">Keyword: {articulo.palabra_clave}</span>
+                <h3>{articulo.titulo}</h3>
+                <p>{articulo.resumen}</p>
+                <strong>Curso relacionado: {articulo.curso_relacionado}</strong>
 
-          <form className="formulario" onSubmit={enviarRegistro}>
+                <button
+                  onClick={() => {
+                    const curso = cursos.find(
+                      (c) => c.nombre === articulo.curso_relacionado,
+                    );
+
+                    if (curso) {
+                      seleccionarCurso(curso);
+                    }
+                  }}
+                >
+                  Ver curso relacionado
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {vista === "journey" && (
+        <section className="section">
+          <h2>Customer Journey Maps</h2>
+          <p className="subtitle">
+            La web contempla recorridos desde redes sociales y desde búsqueda
+            orgánica/pagada.
+          </p>
+
+          <div className="journey">
+            <div>
+              <h3>Caso A: Instagram Ads</h3>
+              <ol>
+                <li>El usuario ve un anuncio visual del curso.</li>
+                <li>
+                  Hace clic y entra a una landing optimizada para móviles.
+                </li>
+                <li>Revisa módulos, beneficios y promoción.</li>
+                <li>Se registra o abandona el formulario.</li>
+                <li>
+                  El sistema permite recuperación mediante email marketing.
+                </li>
+                <li>Finaliza el curso y comparte su certificado.</li>
+              </ol>
+            </div>
+
+            <div>
+              <h3>Caso B: Google Search / SEO</h3>
+              <ol>
+                <li>El usuario busca cursos técnicos en Google.</li>
+                <li>Encuentra un artículo del blog posicionado por SEO.</li>
+                <li>Lee el contenido y llega al curso relacionado.</li>
+                <li>Compara temario, precio, requisitos y docente.</li>
+                <li>Completa el registro y avanza al pago.</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {vista === "registro" && (
+        <section className="section">
+          <h2>Registro de alumno</h2>
+          <p className="subtitle">
+            El formulario permite captar leads. Puede generar un código DEMO
+            gratuito o un código PAGO pendiente de confirmación.
+          </p>
+
+          <form className="form" onSubmit={enviarRegistro}>
             <input
               type="text"
               name="nombre"
@@ -459,15 +578,25 @@ function App() {
               onChange={manejarCambio}
             >
               <option value="">Seleccioná un curso</option>
-
               {cursos.map((curso) => (
-                <option key={curso.id} value={curso.nombre}>
+                <option key={curso.id_curso} value={curso.nombre}>
                   {curso.nombre}
                 </option>
               ))}
             </select>
 
-            <div className="opciones-registro">
+            <select
+              name="fuenteTrafico"
+              value={formulario.fuenteTrafico}
+              onChange={manejarCambio}
+            >
+              <option value="Instagram Ads">Instagram Ads</option>
+              <option value="Google Search / SEO">Google Search / SEO</option>
+              <option value="Email Marketing">Email Marketing</option>
+              <option value="Directo">Directo</option>
+            </select>
+
+            <div className="radio-box">
               <label>
                 <input
                   type="radio"
@@ -476,7 +605,7 @@ function App() {
                   checked={formulario.tipoRegistro === "gratis"}
                   onChange={manejarCambio}
                 />
-                Acceso gratuito con código automático
+                Acceso gratuito con código DEMO
               </label>
 
               <label>
@@ -487,27 +616,26 @@ function App() {
                   checked={formulario.tipoRegistro === "pago"}
                   onChange={manejarCambio}
                 />
-                Inscripción pendiente de pago
+                Inscripción con pago pendiente
               </label>
             </div>
 
             <button type="submit">Generar registro</button>
           </form>
 
-          {mensaje && <p className="mensaje">{mensaje}</p>}
+          {mensaje && <p className="message">{mensaje}</p>}
         </section>
       )}
 
       {vista === "login" && (
-        <section className="seccion login">
+        <section className="section">
           <h2>Ingreso al aula virtual</h2>
-
-          <p className="subtitulo">
-            Ingresá el código recibido al registrarte. Si el registro está
-            pendiente de pago, el sistema no permitirá acceder todavía.
+          <p className="subtitle">
+            Ingresá el código recibido. Los códigos pendientes de pago no
+            permiten entrar hasta que el administrador confirme la matrícula.
           </p>
 
-          <form className="formulario" onSubmit={ingresarConCodigo}>
+          <form className="form" onSubmit={ingresarConCodigo}>
             <input
               type="text"
               placeholder="Ejemplo: DEMO-REACTYNO-4582"
@@ -515,16 +643,16 @@ function App() {
               onChange={(e) => setCodigoLogin(e.target.value)}
             />
 
-            <button type="submit">Ingresar al curso</button>
+            <button type="submit">Ingresar</button>
           </form>
 
-          {mensaje && <p className="mensaje">{mensaje}</p>}
+          {mensaje && <p className="message">{mensaje}</p>}
         </section>
       )}
 
       {vista === "aula" && usuarioActivo && (
-        <section className="seccion aula">
-          <div className="panel-superior">
+        <section className="section aula">
+          <div className="aula-header">
             <div>
               <h2>Aula virtual</h2>
               <p>
@@ -532,13 +660,13 @@ function App() {
               </p>
             </div>
 
-            <button className="btn-salir" onClick={cerrarSesion}>
+            <button className="danger" onClick={cerrarSesion}>
               Cerrar sesión
             </button>
           </div>
 
-          <div className="aula-grid">
-            <div className="bloque-aula grande">
+          <div className="dashboard">
+            <div className="panel large">
               <h3>{usuarioActivo.curso}</h3>
               <p>
                 Profesor: <strong>{cursoDelUsuario?.profesor}</strong>
@@ -546,46 +674,36 @@ function App() {
               <p>
                 Modalidad: <strong>{cursoDelUsuario?.modalidad}</strong>
               </p>
-              <p>
-                Duración: <strong>{cursoDelUsuario?.duracion}</strong>
-              </p>
 
-              <div className="barra">
-                <div
-                  className="progreso"
-                  style={{ width: `${usuarioActivo.progreso}%` }}
-                ></div>
+              <div className="bar">
+                <div style={{ width: `${usuarioActivo.progreso}%` }}></div>
               </div>
 
               <span>{usuarioActivo.progreso}% de avance</span>
             </div>
 
-            <div className="bloque-aula">
-              <h3>Código de acceso</h3>
-              <p>{usuarioActivo.codigo}</p>
-              <span className="estado activo">{usuarioActivo.estado}</span>
+            <div className="panel">
+              <h3>Código</h3>
+              <p>{usuarioActivo.codigo_acceso}</p>
+              <span className="status">{usuarioActivo.estado}</span>
             </div>
 
-            <div className="bloque-aula">
+            <div className="panel">
               <h3>Certificado</h3>
-              <p>
-                El certificado estará disponible cuando completes todos los
-                módulos del curso.
-              </p>
+              <p>Disponible al completar el 100% del curso.</p>
             </div>
           </div>
 
-          <div className="contenido-aula">
+          <div className="aula-content">
             <div>
               <h3>Material de estudio</h3>
 
               {materiales.map((material) => (
-                <div key={material.id} className="material">
+                <div className="material" key={material.id_material}>
                   <div>
                     <strong>{material.modulo}</strong>
                     <p>{material.titulo}</p>
                   </div>
-
                   <span>{material.tipo}</span>
                   <em>{material.estado}</em>
                 </div>
@@ -595,9 +713,9 @@ function App() {
             <div>
               <h3>Compañeros</h3>
 
-              <div className="companeros">
-                {compañeros.map((compañero, index) => (
-                  <p key={index}>{compañero}</p>
+              <div className="mates">
+                {companeros.map((compa, index) => (
+                  <p key={index}>{compa}</p>
                 ))}
               </div>
             </div>
@@ -606,65 +724,95 @@ function App() {
       )}
 
       {vista === "admin" && (
-        <section className="seccion">
-          <h2>Panel administrativo</h2>
-
-          <p className="subtitulo">
-            Este panel simula la gestión de inscripciones. En una versión real,
-            estos datos se guardarían en una base de datos MySQL administrada
-            desde phpMyAdmin.
+        <section className="section">
+          <h2>Panel administrativo y analítica</h2>
+          <p className="subtitle">
+            Simula el control de inscripciones, pagos, códigos y métricas de
+            campaña.
           </p>
 
-          {usuarios.length === 0 ? (
-            <p className="mensaje">
-              Todavía no hay usuarios registrados en la plataforma.
-            </p>
-          ) : (
-            <div className="tabla-contenedor">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Alumno</th>
-                    <th>Email</th>
-                    <th>Curso</th>
-                    <th>Tipo</th>
-                    <th>Código</th>
-                    <th>Estado</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {usuarios.map((usuario) => (
-                    <tr key={usuario.id}>
-                      <td>{usuario.nombre}</td>
-                      <td>{usuario.email}</td>
-                      <td>{usuario.curso}</td>
-                      <td>
-                        {usuario.tipoRegistro === "gratis" ? "Gratis" : "Pago"}
-                      </td>
-                      <td>{usuario.codigo}</td>
-                      <td>{usuario.estado}</td>
-                      <td>
-                        {usuario.estado === "Pendiente de pago" ? (
-                          <button
-                            className="btn-tabla"
-                            onClick={() => confirmarPago(usuario.id)}
-                          >
-                            Confirmar pago
-                          </button>
-                        ) : (
-                          <span className="estado activo">Habilitado</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="kpis">
+            <div>
+              <h3>{resumen?.total_usuarios || 0}</h3>
+              <p>Usuarios registrados</p>
             </div>
-          )}
 
-          {mensaje && <p className="mensaje">{mensaje}</p>}
+            <div>
+              <h3>{resumen?.registros_gratis || 0}</h3>
+              <p>Códigos DEMO</p>
+            </div>
+
+            <div>
+              <h3>{resumen?.pagos_pendientes || 0}</h3>
+              <p>Pagos pendientes</p>
+            </div>
+
+            <div>
+              <h3>{resumen?.accesos_habilitados || 0}</h3>
+              <p>Accesos habilitados</p>
+            </div>
+          </div>
+
+          <h3 className="admin-title">Métricas de campaña</h3>
+
+          <div className="metrics">
+            {metricas.map((metrica) => (
+              <div key={metrica.id_metrica} className="metric">
+                <strong>{metrica.canal}</strong>
+                <p>{metrica.etapa}</p>
+                <span>
+                  {metrica.kpi}: {metrica.valor}
+                </span>
+                <em>{metrica.herramienta}</em>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="admin-title">Usuarios registrados</h3>
+
+          <div className="table-box">
+            <table>
+              <thead>
+                <tr>
+                  <th>Alumno</th>
+                  <th>Email</th>
+                  <th>Curso</th>
+                  <th>Fuente</th>
+                  <th>Tipo</th>
+                  <th>Código</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {usuarios.map((usuario) => (
+                  <tr key={usuario.id_usuario}>
+                    <td>{usuario.nombre}</td>
+                    <td>{usuario.email}</td>
+                    <td>{usuario.curso}</td>
+                    <td>{usuario.fuente_trafico}</td>
+                    <td>{usuario.tipo_registro}</td>
+                    <td>{usuario.codigo_acceso}</td>
+                    <td>{usuario.estado}</td>
+                    <td>
+                      {usuario.estado === "Pendiente de pago" ? (
+                        <button
+                          onClick={() => confirmarPago(usuario.id_usuario)}
+                        >
+                          Confirmar pago
+                        </button>
+                      ) : (
+                        <span className="status">Habilitado</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {mensaje && <p className="message">{mensaje}</p>}
         </section>
       )}
 
